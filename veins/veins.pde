@@ -1,17 +1,20 @@
+//goal, send text to gh, create as pipes
+//secondary, get veins to grow in 3d space, limit the bounding block in gh
+
 import peasy.*;
 PeasyCam cam;
 
-int pr = 280;
+int pw = 250; //prusa width
+int ph = 200; //prusa height
 
-int wormSize = 150;
+int popSize = 30;
+int wormSize = 50;
 //create an array of worms
-
-Worm w;
+ArrayList<Worm> worms;
 
 //for writing
-int trial = 1;
+int trial = 7;
 String title = "veins";
-Boolean DEBUG = true;
 
 //basic setup for 3D
 void setup(){
@@ -30,8 +33,8 @@ void setup(){
   cam.setMinimumDistance(1);
   cam.setMaximumDistance(500);
 
-  //make a single worm
-  w = new Worm(new PVector(0,0,0), 10);
+  // init worms, also used to reset
+  makeWorms();
 
   //drawing setup
   background(0);
@@ -46,49 +49,69 @@ void draw(){
   //printer boundry
   noFill();
   stroke(0);
-  ellipse(0,0,pr,pr); //round bat
+  rectMode(CENTER);
+  rect(0, 0, pw, ph);
 
   //loop to draw whatever
-  strokeWeight(2);
-  for(int i = 1; i < w.vertices.size(); i++){
-    PVector current = w.vertices.get(i);
-    line(current.x, current.y, w.vertices.get(i-1).x, w.vertices.get(i-1).y);
-    pushMatrix();
-    translate(current.x, current.y, current.z);
-    // sphere(0.25);
-    popMatrix();
+  for(Worm w : worms){
+    fill(w.bodyColor);
+    stroke(w.bodyColor);
+    strokeWeight(2);
+    for(int i = 1; i < w.vertices.size(); i++){
+      PVector current = w.vertices.get(i);
+      line(current.x, current.y, w.vertices.get(i-1).x, w.vertices.get(i-1).y);
+      pushMatrix();
+      translate(current.x, current.y, current.z);
+      // sphere(0.25);
+      popMatrix();
+    }
   }
 
+}
+
+void makeWorms(){
+  worms = new ArrayList<Worm>();
+
+  for(int i = 0; i < popSize; i++){
+    float seedAngle = random(0, TWO_PI); //could be inside loop to give each worm a different angle
+    worms.add(new Worm(new ArrayList<PVector>(), wormSize, seedAngle));
+    //  println(worms.get(i).vertices);
+    worms.get(i).grow(worms); //bug, hitting themselves?!
+    // create a sublist minus this current worm?
+  }
 }
 
 void keyPressed() {
   if(key == 'w'){
-    writeSpecimen(title, trial);
+    writeSpecimen(title, trial, worms);
     trial++;
   } else if(key == 'x'){
     exit();
   } else if(key == 'r'){
-    w = new Worm(new PVector(0,0,0), 10);
+    makeWorms(); //regrow the worms!
   }
+  println(worms.size());
 }
 
 //generate geometry for open scad
-void writeSpecimen(String title, int id){
+void writeSpecimen(String title, int id, ArrayList<Worm> worms){
   //create writer
   PrintWriter coordinates;
-  coordinates = createWriter(title + id + ".txt");
-  coordinates.println("WormList["); //opening line
+  coordinates = createWriter(title + id + ".scad");
+  coordinates.println("WormList = ["); //opening line
 
   //loop over all the wroms
+  for(Worm single : worms){
     //for each worm, add a point at each location
     //for loop, write coordinates of each point in the array list to the file
     //[x, y, z],
 
     coordinates.println("["); //open single worm
-    for(PVector current : w.vertices) {
+    for(PVector current : single.vertices) {
       coordinates.println("[" + current.x + ", " + current.y + ", " + current.z + "],");
     }
     coordinates.println("],"); //close single worm
+  }
 
   coordinates.println("];"); //closing line
   coordinates.flush();

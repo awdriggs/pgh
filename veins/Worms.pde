@@ -1,116 +1,59 @@
 class Worm {
-  //Define Variables
-  PVector loc;
-  PVector vel = new PVector(random(-2, 2), random(-2, 2));
-  PVector startLoc;
-  PVector ploc = new PVector();
-  //PVector right= new PVector();
-  //PVector left=new PVector();
-  PVector check = new PVector();
-  PVector angle = new PVector(random(0, TWO_PI), random(0, TWO_PI));
-  color c = color(random(50, 200));
-  color g = color(0, 255, 0);
-  color r = color(255, 0, 0);
-  color w = color(255);
+  //properties
+  ArrayList<PVector> vertices;
+  color bodyColor;
+  int numSegments;
+  float probCone = PI/6; //variablity, 30 degrees
+  float theta;
+  int d = 2; //length of the unit vector, = to radius?
 
-  int offset;
-  //keep track of where you have been
-  ArrayList<PVector> vertices = new ArrayList<PVector>();
+  Worm(ArrayList<PVector> inheritedVertices, int s, float t){
+    vertices = inheritedVertices;
 
-  //random(0, TWO_PI);
-  //angle.y = random(0, TWO_PI); //1.0; //??
-  float stepSize = 0.8; //change to effect the step size
-  float speed = 5; //ellipse
-  float baseAngle = 0;
-  float dev;
-  float lean = 0.95;
-  float devAllow = 2.0; //amount of "jitter" before easing
-  float push = 0.1;
-  float angleChange = 0.1;
-  int dia = 10;
-
-  float threshold = 50.0;
-
-
-  //Define Constructor
-  Worm(PVector l, int d) {
-    startLoc = l.get();
-    loc = l.get();
-    dia = d;
-  }
-
-  void go() {
-    walk();
-    /* checkBright(); */
-    borders();
-    //cell();
-    render();
-    this.vertices.add(new PVector (loc.x, loc.y, loc.y));
-  }
-
-  //random walk
-  void walk() {
-    //float lean = map(mouseX, 0, width, 0.9, 1.1);
-    angle.x += random(-stepSize, stepSize);
-    angle.y += random(-stepSize, stepSize);
-
-
-    //angle += random(-stepSize, stepSize);
-    //dev = angle - baseAngle;
-
-    if (dev > devAllow || dev < -devAllow) {
-      //angle *= lean;
-      //println("dev");
+    if(vertices.size() == 0){
+      vertices.add(new PVector(0, 0, 100));
     }
 
-    //check for a collision with the new x value
-    //if true, refeect x angle, update the x value
-    //check.x += sin(angle.x) * speed;
-
-    //check for collision with the new y value
-    //if true, reflect y angle, update the y value
-    /* if(cell()){ */
-    /*   println("horizontal hit"); */
-    /*   angle.x *= -1; */
-    /*   check.x += sin(angle.x) * speed; */
-    /* } */
-
-    /* loc.x += sin(angle.x) * speed; */
-
-    /* check.y += sin(angle.y) * speed; */
-
-    /* if(cell()){ */
-    /*   println("vertical hit"); */
-    /*   angle.y *= -1; */
-    /*   loc.y += sin(angle.x) * speed; */
-    /* } */
-    loc.x += sin(angle.x) * speed;
-    loc.y += sin(angle.y) * speed;
-    check.x = loc.x+sin(angle.x)*dia/2+1;
-    check.y = loc.y+sin(angle.y)*dia/2+1;
+    numSegments = s;
+    bodyColor = color(random(255), random(255), random(255));
+    theta = t;
   }
 
-  void render() {
-    fill(c);
-    noStroke();
-    ellipse(loc.x, loc.y, dia, dia);
-    //point(loc.x, loc.y);
-    if (DEBUG == true) {
-      stroke(255, 0, 0);
-      ellipse(check.x, check.y, 5, 5);
+  void grow(ArrayList<Worm> others){
+    //calc heading, plus/minus the code
+    //generate next point using the heading as direction
+    //continue until the segments have reached the desired length
+    //each point gets added as a vertices of the worm
+
+outer: //named loop
+    for(int i = 1; i < numSegments; i++){
+      theta = theta + random(-probCone, probCone);
+      PVector u = PVector.fromAngle(theta);
+      u.mult(d);
+
+      //get last location
+      //add new location to last vector location
+      PVector newLocation = vertices.get(i - 1).copy().add(u);
+
+      //if i is greater than 5, or maybe 1/3 of size
+      if(i > numSegments / 4){
+        //for loop over other worms vertices
+        for(Worm o : others){
+          //test
+          if(o != this){
+            //if last is close to another vert, snap to other worm
+            for(PVector v : o.vertices){
+              if(newLocation.dist(v) < d){
+                newLocation = v.copy(); //replaces the newLocation with a point on another worm
+                vertices.add(newLocation); //snap to the close point
+                break outer; //ending the growth
+              }
+            }
+          }
+        }
+      }
+
+      vertices.add(newLocation);
     }
   }
-
-  void borders() {
-    if (check.x> pr - 2 || check.x < -pr + 2) {
-      //println("x hit" + " angle: " + angle);
-      angle.x *= -1;
-
-    }
-    else if (check.y > pr -2 || check.y< -pr + 2) {
-      //println("y hit" + " angle: " + angle);
-      angle.y *= -1;
-    }
-  }
-
 }
